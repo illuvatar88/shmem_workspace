@@ -1,0 +1,7 @@
+.cproject
+.project
+.settings/*
+Debug/*
+timer.h
+kill_procs.sh
+launch.out
