@@ -14,7 +14,7 @@
 using namespace std;
 
 #define MASTER 0
-#define ITER 10000
+#define ITER 500
 
 long lock = 0;
 
@@ -33,6 +33,7 @@ int main (int argc, char* argv[]) {
     double* pi_temp = (double*) shmalloc (sizeof(double));
     double start_time = timerval();
     for (int i = 1 ; i <= ITER ; i++) {
+        //cerr << "Iter : " << i << endl;
         *pi_temp = partial_summation (N);
         final_summation (pi_temp, pi);
     }
@@ -58,17 +59,17 @@ double partial_summation (int N) {
 }
 
 void final_summation (double* pi_temp, double* pi) {
-    double* pWrk = (double*) shmalloc (sizeof(double) * _SHMEM_REDUCE_MIN_WRKDATA_SIZE);
-    long* pSync = (long*) shmalloc (sizeof(long) * _SHMEM_REDUCE_SYNC_SIZE);
-    for (int i = 0 ; i < _SHMEM_REDUCE_SYNC_SIZE ; i++)
+    double* pWrk = (double*) shmalloc (sizeof(double)
+            * _SHMEM_REDUCE_MIN_WRKDATA_SIZE);
+    long* pSync = (long*) shmalloc (_SHMEM_REDUCE_SYNC_SIZE);
+    for (int i = 0 ; i < _SHMEM_REDUCE_SYNC_SIZE / sizeof(long)  ; i++)
         pSync[i] = _SHMEM_SYNC_VALUE;
     shmem_barrier_all();
-    cerr << "Check 1\n";
-    shmem_double_sum_to_all(pi, pi_temp, 1, 0, 1, _num_pes(), pWrk, pSync);
+    shmem_double_sum_to_all(pi, pi_temp, 1, 0, 0, _num_pes(), pWrk, pSync);
 }
 
 double timerval () {
-struct timespec st;
-clock_gettime (CLOCK_REALTIME, &st);
-return st.tv_sec + st.tv_nsec * 1e-9;
+    struct timespec st;
+    clock_gettime (CLOCK_REALTIME, &st);
+    return st.tv_sec + st.tv_nsec * 1e-9;
 }
