@@ -14,12 +14,10 @@
 using namespace std;
 
 #define MASTER 0
-#define ITER 500
-
-long lock = 0;
+#define ITER 10000
 
 double partial_summation (int N);
-void final_summation (double* pi_temp, double* pi);
+void final_summation (double* pi_array);
 double timerval ();
 
 int main (int argc, char* argv[]) {
@@ -29,25 +27,19 @@ int main (int argc, char* argv[]) {
     }
     int N = atoi (argv[1]);
     start_pes(0);
-
-    double* pi = (double*) shmalloc (sizeof(double));
-    double* pi_temp = (double*) shmalloc (sizeof(double));
-
+    double* pi_array = (double*) shmalloc (sizeof(double) * _num_pes());
     double start_time = timerval();
     for (int i = 1 ; i <= ITER ; i++) {
-        *pi_temp = partial_summation (N);
-        final_summation (pi_temp, pi);
+        pi_array[_my_pe()] = partial_summation (N);
+        final_summation (pi_array);
     }
     double end_time = timerval();
-
     if (_my_pe() == MASTER) {
-        cout << "Value of pi : " << std::setprecision (51) << *pi << endl;
+        cout << "Value of pi : " << std::setprecision (51) << pi_array[MASTER] << endl;
         cout << "Avg time taken : " << std::setprecision (8)
         << (end_time - start_time) * 1e6 / ITER << " us" << endl;
     }
-
-    shfree(pi);
-    shfree(pi_temp);
+    shfree(pi_array);
     return 0;
 }
 
@@ -62,18 +54,16 @@ double partial_summation (int N) {
     return pi;
 }
 
-void final_summation (double* pi_temp, double* pi) {
-    double* pWrk = (double*) shmalloc (sizeof(double)
-            * _SHMEM_REDUCE_MIN_WRKDATA_SIZE);
-    long* pSync = (long*) shmalloc (_SHMEM_REDUCE_SYNC_SIZE * sizeof(long));
-    for (int i = 0 ; i < _SHMEM_REDUCE_SYNC_SIZE / sizeof(long)  ; i++)
-        pSync[i] = _SHMEM_SYNC_VALUE;
-
-    shmem_barrier_all();
-    shmem_double_sum_to_all(pi, pi_temp, 1, 0, 0, _num_pes(), pWrk, pSync);
-
-    shfree(pWrk);
-    shfree(pSync);
+void final_summation (double* pi_array) {
+    shmem_double_put (&pi_array[_my_pe()], &pi_array[_my_pe()], 1, MASTER);
+    shmem_barrier_all ();
+    if (_my_pe() == MASTER) {
+        for (int i = 0 ; i < _num_pes() ; i++) {
+            if (i == MASTER)
+                continue;
+            pi_array[MASTER] += pi_array[i];
+        }
+    }
 }
 
 double timerval () {

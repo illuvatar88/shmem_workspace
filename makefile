@@ -3,7 +3,7 @@ CC = /home/arunkumar/SHMEM/bin/oshCC
 
 RUNNER = /home/arunkumar/SHMEM/bin/oshrun
 
-SOURCE ?= pi_lock.cpp
+SOURCE ?= pi_collective.cpp
 
 EXE = ./launch.out
 
